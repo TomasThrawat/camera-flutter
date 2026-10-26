@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   build-android:
     name: Build Camera ARM64
@@ -10,10 +13,13 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Install Flutter and Android SDK
         run: bash .circleci/install_android_flutter.sh
+
+      - name: Apply verified Dart analyzer fixes
+        run: python3 tool/fix_analyzer_warnings.py
 
       - name: Prepare Android project and icon
         run: |
@@ -38,7 +44,7 @@ jobs:
       - name: Analyze Flutter source
         run: |
           set -euo pipefail
-          flutter analyze 2>&1 | tee -a camera-ci.log
+          flutter analyze --fatal-infos 2>&1 | tee -a camera-ci.log
 
       - name: Run widget tests
         run: |
@@ -50,9 +56,9 @@ jobs:
           set -euo pipefail
           flutter build apk --release --target-platform android-arm64 2>&1 | tee -a camera-ci.log
 
-      - name: Upload build diagnostics
+      - name: Upload complete build diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: camera-build-diagnostics
           path: camera-ci.log
@@ -61,7 +67,7 @@ jobs:
 
       - name: Upload ARM64 APK
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: camera-arm64-release
           path: build/app/outputs/flutter-apk/app-release.apk
