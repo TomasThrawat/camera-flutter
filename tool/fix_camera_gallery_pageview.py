@@ -63,24 +63,30 @@ else:
 
 # A system back gesture while in Gallery must switch to Camera, not exit.
 if "system back from Gallery returns to Camera" not in test_text:
-    test_text += """
-
-testWidgets('system back from Gallery returns to Camera', (tester) async {
+    test_case = """testWidgets('system back from Gallery returns to Camera', (tester) async {
   await tester.pumpWidget(const CameraApp());
   await tester.pump(const Duration(milliseconds: 100));
 
-  await tester.tap(find.text('Gallery').last);
+  final galleryShortcut = find.byTooltip('Gallery');
+  expect(galleryShortcut, findsOneWidget);
+  await tester.tap(galleryShortcut);
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 150));
-  expect(find.text('Gallery'), findsNWidgets(2));
+
+  expect(find.textContaining('swipe left for videos'), findsOneWidget);
+  expect(find.byTooltip('Gallery'), findsNothing);
 
   await tester.binding.handlePopRoute();
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));
 
-  expect(find.text('Gallery'), findsOneWidget);
-});
-"""
+  expect(find.byTooltip('Gallery'), findsOneWidget);
+  expect(find.textContaining('swipe left for videos'), findsNothing);
+});"""
+    main_end = test_text.rfind("\n}")
+    if main_end < 0:
+        raise SystemExit("Could not find main() closing brace for the system-back regression test.")
+    test_text = test_text[:main_end] + "\n\n" + test_case + test_text[main_end:]
     print("added: system-back navigation regression test")
 test_path.write_text(test_text, encoding="utf-8")
 
@@ -103,6 +109,23 @@ elif "tooltip: 'Refresh gallery'" not in text:
     print("already fixed: Gallery refresh icon absent")
 else:
     raise SystemExit("Could not safely identify the Gallery refresh icon.")
+
+# Remove the actual top-right Camera shortcut; rely on the phone's system-back gesture.
+camera_shortcut = """                IconButton(
+                  onPressed: widget.onOpenCamera,
+                  tooltip: 'Camera',
+                  icon: const Icon(Icons.camera_alt_outlined, color: _white),
+                ),
+"""
+if camera_shortcut in text:
+    if text.count(camera_shortcut) != 1:
+        raise SystemExit("Found multiple Gallery camera shortcuts; refusing an unsafe replacement.")
+    text = text.replace(camera_shortcut, "", 1)
+    print("removed: top-right Gallery camera shortcut")
+elif "onPressed: widget.onOpenCamera" not in text:
+    print("already fixed: top-right Gallery camera shortcut absent")
+else:
+    raise SystemExit("Could not safely identify the top-right Gallery camera shortcut.")
 
 if "canPop: _selectedTab == 0" not in text or "onPopInvokedWithResult: (didPop, result)" not in text:
     raise SystemExit("The Gallery system-back PopScope is missing; refusing to build without it.")
@@ -229,9 +252,9 @@ zoom_methods = """  void _onZoomUpdate(ScaleUpdateDetails details) {
     }
   }
 
-  Future<void> _showVideoSettings() async {"""
+  Future<void> _applyVideoSettings({"""
 text, zoom_count = re.subn(
-    r"^  void _onZoomUpdate\(ScaleUpdateDetails details\) \{.*?^  Future<void> _showVideoSettings\(\) async \{",
+    r"^  void _onZoomUpdate\(ScaleUpdateDetails details\) \{.*?^  Future<void> _applyVideoSettings\(\{",
     zoom_methods,
     text,
     count=1,
