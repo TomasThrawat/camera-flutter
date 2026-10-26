@@ -183,7 +183,7 @@ video_method = """  Future<void> _saveVideo(XFile video) async {
           return;
         }
       }
-      if (saved != null) widget.onMediaSaved();
+      widget.onMediaSaved();
     } catch (_) {
       // Capture remains silent; never show a save-status popup.
     }
