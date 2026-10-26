@@ -8,12 +8,7 @@ text = source.read_text(encoding="utf-8")
 # Pointer listeners observe a horizontal gesture without competing with nested
 # GridView/ListView drag recognizers. Disable PageView's own drag recognizer and
 # move between the two pages after a clearly horizontal swipe.
-if "import 'package:flutter/gestures.dart';" not in text:
-    text = text.replace(
-        "import 'package:flutter/material.dart';\n",
-        "import 'package:flutter/gestures.dart';\nimport 'package:flutter/material.dart';\n",
-        1,
-    )
+# Pointer event types are exported by material.dart; no extra import is needed.
 
 fields_old = """  int _selectedGalleryPage = 0;
   final PageController _galleryPageController = PageController();"""
