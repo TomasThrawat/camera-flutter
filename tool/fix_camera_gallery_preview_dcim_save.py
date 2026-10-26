@@ -76,9 +76,10 @@ else:
 replace_method(
     "Future<void> _openAsset(AssetEntity asset) async {",
     """  Future<void> _openAsset(AssetEntity asset) async {
-    final index = _assets.indexOf(asset);
+    final currentAssets = asset.type == AssetType.video ? _videoAssets : _imageAssets;
+    final index = currentAssets.indexOf(asset);
     if (!mounted || index < 0) return;
-    final assets = List<AssetEntity>.unmodifiable(_assets);
+    final assets = List<AssetEntity>.unmodifiable(currentAssets);
     final files = List<Future<File?>>.unmodifiable(
       assets.map((item) => item.file),
     );
@@ -163,10 +164,9 @@ class _GalleryAssetViewerState extends State<_GalleryAssetViewer> {
                 ),
               );
             }
-            return _AssetPreview(
+            return KeyedSubtree(
               key: ValueKey<String>(asset.id),
-              asset: asset,
-              file: file,
+              child: _AssetPreview(asset: asset, file: file),
             );
           },
         );
