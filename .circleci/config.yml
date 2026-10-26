@@ -83,6 +83,11 @@ jobs:
           set -euo pipefail
           python3 tool/finalize_camera_gallery_interactions.py 2>&1 | tee -a camera-ci.log
 
+      - name: Enable swiping inside opened photos and videos
+        run: |
+          set -euo pipefail
+          python3 tool/fix_camera_gallery_preview_dcim_save.py 2>&1 | tee -a camera-ci.log
+
       - name: Prepare Android project and icon
         run: |
           set -euo pipefail
