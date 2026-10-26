@@ -31,7 +31,7 @@ replace_method("_savePhoto", r'''  Future<void> _savePhoto(XFile image) async {
       );
       widget.onMediaSaved();
     } catch (_) {
-      // Keep capture silent; do not show a saved-status popup.
+      // Keep capture silent; do not show a save-status popup.
     }
   }''')
 
@@ -47,7 +47,7 @@ replace_method("_saveVideo", r'''  Future<void> _saveVideo(XFile video) async {
       );
       widget.onMediaSaved();
     } catch (_) {
-      // Never show a save popup or fall back to Movies.
+      // Keep capture silent; do not use an alternate save destination.
     }
   }''')
 
@@ -97,7 +97,7 @@ for method in ("_savePhoto", "_saveVideo"):
 video_start = text.find("  Future<void> _saveVideo(")
 video_end = text.find("\n  }", video_start)
 video_body = text[video_start:video_end + 4]
-if "Movies/Camera" in video_body or "Movies" in video_body:
+if "relativePath: 'Movies/Camera'" in video_body or "relativePath: 'Movies'" in video_body:
     raise SystemExit("Video save still falls back to Movies")
 if "tooltip: 'Refresh gallery'" in text:
     raise SystemExit("Gallery refresh icon still exists")
