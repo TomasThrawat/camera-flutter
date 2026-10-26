@@ -26,6 +26,9 @@ if "import 'package:flutter/services.dart';" not in text:
         "import 'package:flutter/material.dart';\nimport 'package:flutter/services.dart';\n",
         "Flutter services import",
     )
+if "import 'dart:typed_data';" in text:
+    text = text.replace("import 'dart:typed_data';\n", "", 1)
+    print("removed: unnecessary dart:typed_data import; services.dart exports Uint8List")
 if "const MethodChannel _cameraMediaStore" not in text:
     replace_once(
         "const Color _muted = Color(0xFF8C8C8C);",
@@ -68,11 +71,10 @@ save_methods = """  Future<void> _savePhoto(XFile image) async {
         );
         if (saved == null || saved.isEmpty) return;
       } else {
-        final saved = await PhotoManager.editor.saveVideo(
+        await PhotoManager.editor.saveVideo(
           source,
           title: title,
         );
-        if (saved == null) return;
       }
       widget.onMediaSaved();
     } catch (_) {
