@@ -78,8 +78,8 @@ jobs:
       - name: Restore native gallery PageView swipes
         run: python3 tool/fix_camera_gallery_pageview.py
 
-      - name: Fix gallery preview swipes, back navigation, and silent DCIM video saving
-        run: python3 tool/fix_camera_gallery_preview_dcim_save.py
+      - name: Finalize video folder, gallery swipes, and system back
+        run: python3 tool/fix_camera_media_gallery_navigation.py
 
       - name: Prepare Android project and icon
         run: |
