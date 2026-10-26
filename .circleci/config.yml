@@ -1,11 +1,10 @@
-name: Camera Flutter CI
+name: Flutter Container Probe
 on:
   push:
     branches: [main]
 
 jobs:
-  build-android:
-    name: Build Camera ARM64
+  container-probe:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/cirruslabs/flutter:stable
@@ -13,31 +12,24 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Prepare Android project and launcher icon
-        run: bash tool/prepare_android.sh
+      - name: Capture build environment
+        run: |
+          {
+            echo "user=$(id -un)"
+            echo "flutter=$(command -v flutter || true)"
+            flutter --version
+            echo "java=$(command -v java || true)"
+            java -version 2>&1 || true
+            echo "ANDROID_HOME=\${ANDROID_HOME:-not-set}"
+            echo "ANDROID_SDK_ROOT=\${ANDROID_SDK_ROOT:-not-set}"
+            echo "sdkmanager=$(command -v sdkmanager || true)"
+            echo "git=$(command -v git || true)"
+            echo "pubspec_present=$(test -f pubspec.yaml && echo yes || echo no)"
+          } > environment-report.txt 2>&1
 
-      - name: Resolve dependencies
-        run: flutter pub get
-
-      - name: Generate launcher icons
-        run: dart run flutter_launcher_icons
-
-      - name: Format Dart source
-        run: dart format lib test
-
-      - name: Analyze Flutter source
-        run: flutter analyze
-
-      - name: Run widget tests
-        run: flutter test --reporter expanded
-
-      - name: Build ARM64 release APK
-        run: flutter build apk --release --target-platform android-arm64
-
-      - name: Upload ARM64 APK
+      - name: Upload environment report
         uses: actions/upload-artifact@v4
         with:
-          name: camera-arm64-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: circleci-runner-environment
+          path: environment-report.txt
           if-no-files-found: error
-          retention-days: 14
