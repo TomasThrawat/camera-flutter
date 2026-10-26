@@ -1,40 +1,69 @@
-name: CircleCI Runner Environment Probe
+name: Camera Flutter CI
 on:
   push:
     branches: [main]
 
 jobs:
-  probe:
+  build-android:
+    name: Build Camera ARM64
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-      - name: Inspect runner tools without setup actions
+
+      - name: Install Flutter and Android SDK
+        run: bash .circleci/install_android_flutter.sh
+
+      - name: Prepare Android project and icon
         run: |
-          {
-            echo "=== OS ==="
-            uname -a
-            cat /etc/os-release || true
-            echo "=== PATH TOOLS ==="
-            command -v bash || true
-            command -v curl || true
-            command -v git || true
-            command -v java || true
-            command -v flutter || true
-            command -v dart || true
-            command -v sdkmanager || true
-            echo "=== JAVA ==="
-            java -version 2>&1 || true
-            echo "=== DISK ==="
-            df -h . || true
-            echo "=== PROJECT ==="
-            test -f pubspec.yaml && echo pubspec_present || echo pubspec_missing
-            test -f lib/main.dart && echo main_dart_present || echo main_dart_missing
-          } > environment-report.txt 2>&1
-          cat environment-report.txt
-      - name: Upload environment report
+          set -euo pipefail
+          bash tool/prepare_android.sh 2>&1 | tee -a camera-ci.log
+
+      - name: Resolve Dart dependencies
+        run: |
+          set -euo pipefail
+          flutter pub get 2>&1 | tee -a camera-ci.log
+
+      - name: Generate launcher icons
+        run: |
+          set -euo pipefail
+          dart run flutter_launcher_icons 2>&1 | tee -a camera-ci.log
+
+      - name: Format Dart source
+        run: |
+          set -euo pipefail
+          dart format lib test 2>&1 | tee -a camera-ci.log
+
+      - name: Analyze Flutter source
+        run: |
+          set -euo pipefail
+          flutter analyze 2>&1 | tee -a camera-ci.log
+
+      - name: Run widget tests
+        run: |
+          set -euo pipefail
+          flutter test --reporter expanded 2>&1 | tee -a camera-ci.log
+
+      - name: Build ARM64 release APK
+        run: |
+          set -euo pipefail
+          flutter build apk --release --target-platform android-arm64 2>&1 | tee -a camera-ci.log
+
+      - name: Upload build diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: circleci-runner-environment
-          path: environment-report.txt
+          name: camera-build-diagnostics
+          path: camera-ci.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload ARM64 APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: camera-arm64-release
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+          retention-days: 14
