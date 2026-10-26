@@ -116,7 +116,22 @@ if "class _GalleryAssetViewer extends StatefulWidget" not in text:
   State<_GalleryAssetViewer> createState() => _GalleryAssetViewerState();
 }
 
-class _GalleryAssetViewerState extends State<_GalleryAssetViewer> {
+class MediaPreviewPager extends StatefulWidget {
+  const MediaPreviewPager({
+    required this.itemCount,
+    required this.initialIndex,
+    required this.itemBuilder,
+  });
+
+  final int itemCount;
+  final int initialIndex;
+  final IndexedWidgetBuilder itemBuilder;
+
+  @override
+  State<MediaPreviewPager> createState() => _MediaPreviewPagerState();
+}
+
+class _MediaPreviewPagerState extends State<MediaPreviewPager> {
   late final PageController _controller;
 
   @override
@@ -132,10 +147,20 @@ class _GalleryAssetViewerState extends State<_GalleryAssetViewer> {
   }
 
   @override
+  Widget build(BuildContext context) => PageView.builder(
+    key: const ValueKey<String>('media-preview-pager'),
+    controller: _controller,
+    itemCount: widget.itemCount,
+    itemBuilder: widget.itemBuilder,
+  );
+}
+
+class _GalleryAssetViewerState extends State<_GalleryAssetViewer> {
+  @override
   Widget build(BuildContext context) {
-    return PageView.builder(
-      controller: _controller,
+    return MediaPreviewPager(
       itemCount: widget.assets.length,
+      initialIndex: widget.initialIndex,
       itemBuilder: (context, index) {
         final asset = widget.assets[index];
         return FutureBuilder<File?>(
@@ -192,4 +217,43 @@ if "relativePath: 'Movies/Camera'" in text or "relativePath: 'Movies/Camera/'" i
 if "relativePath: 'DCIM/Camera/'" not in text or "class _GalleryAssetViewer extends StatefulWidget" not in text:
     raise SystemExit("Final save destination or swipe viewer verification failed")
 source.write_text(text, encoding="utf-8")
+# Regression-test the exact pager widget used inside each opened photo/video.
+test_marker = "swiping inside the opened media viewer changes the displayed item"
+test_path = Path("test/widget_test.dart")
+test_text = test_path.read_text(encoding="utf-8")
+if test_marker not in test_text:
+    case = """  testWidgets('swiping inside the opened media viewer changes the displayed item', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MediaPreviewPager(
+            itemCount: 3,
+            initialIndex: 1,
+            itemBuilder: (context, index) => Center(child: Text('media-$index')),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('media-1'), findsOneWidget);
+
+    final pager = find.byKey(const ValueKey<String>('media-preview-pager'));
+    await tester.drag(pager, const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('media-2'), findsOneWidget);
+
+    await tester.drag(pager, const Offset(500, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('media-1'), findsOneWidget);
+  });
+"""
+    insert_at = test_text.rfind("\n}")
+    if insert_at < 0:
+        raise SystemExit("Could not find main() closing brace in generated widget test.")
+    test_text = test_text[:insert_at] + "\n\n" + case + test_text[insert_at:]
+    test_path.write_text(test_text, encoding="utf-8")
+    print("added: in-viewer left/right swipe regression test")
+else:
+    print("already present: in-viewer swipe regression test")
+
 print("final gallery and media-save patch complete")
