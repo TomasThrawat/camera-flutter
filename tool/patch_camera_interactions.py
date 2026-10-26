@@ -206,10 +206,31 @@ focus = """
     if (controller == null ||
         !controller.value.isInitialized ||
         previewSize.width <= 0 ||
-        previewSize.height <= 0) return;
+        previewSize.height <= 0) {
+      return;
+    }
+
+    // Match the BoxFit.cover crop used by the full-screen preview so the
+    // selected camera point corresponds to the visible pixel under the tap.
+    final orientation = MediaQuery.orientationOf(context);
+    final contentAspectRatio = orientation == Orientation.portrait
+        ? 1 / controller.value.aspectRatio
+        : controller.value.aspectRatio;
+    final viewportAspectRatio = previewSize.width / previewSize.height;
+    var x = position.dx / previewSize.width;
+    var y = position.dy / previewSize.height;
+
+    if (viewportAspectRatio < contentAspectRatio) {
+      final visibleFraction = viewportAspectRatio / contentAspectRatio;
+      x = (1 - visibleFraction) / 2 + x * visibleFraction;
+    } else if (viewportAspectRatio > contentAspectRatio) {
+      final visibleFraction = contentAspectRatio / viewportAspectRatio;
+      y = (1 - visibleFraction) / 2 + y * visibleFraction;
+    }
+
     final point = Offset(
-      (position.dx / previewSize.width).clamp(0.0, 1.0),
-      (position.dy / previewSize.height).clamp(0.0, 1.0),
+      x.clamp(0.0, 1.0).toDouble(),
+      y.clamp(0.0, 1.0).toDouble(),
     );
     try {
       await controller.setFocusPoint(point);
@@ -224,7 +245,15 @@ focus = """
   }
 """
 if "Future<void> _focusAt(Offset position, Size previewSize)" not in s:
-    sub_once("\n  Widget _cameraPlaceholder()", focus + "\n  Widget _cameraPlaceholder()", "focus and exposure point handler")
+    sub_once("\n  Widget _cameraPlaceholder()", focus + "\n  Widget _cameraPlaceholder()", "focus/exposure point mapping")
+else:
+    # Replace the earlier basic implementation, which didn't account for BoxFit.cover cropping.
+    start_focus = s.find("  Future<void> _focusAt(Offset position, Size previewSize) async {")
+    end_focus = s.find("\n  Widget _cameraPlaceholder()", start_focus)
+    if start_focus < 0 or end_focus < 0:
+        raise SystemExit("Could not replace existing focus-point mapper.")
+    s = s[:start_focus] + focus + s[end_focus:]
+    print("updated: focus point mapping accounts for full-screen crop")
 
 sub_once(
 """  String? _error;
