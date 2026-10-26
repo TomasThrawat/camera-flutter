@@ -38,7 +38,7 @@ jobs:
         run: |
           set +e
           python3 tool/patch_camera_interactions.py 2>&1 | tee camera-interactions-patch.log
-          patch_status=\${PIPESTATUS[0]}
+          patch_status=${PIPESTATUS[0]}
           printf '%s\n' "$patch_status" > camera-interactions-patch.exitcode
           exit 0
 
