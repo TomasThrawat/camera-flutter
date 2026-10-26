@@ -101,34 +101,130 @@ if refresh in text:
     text = text.replace(refresh, "", 1)
     print("applied: removed top-right refresh icon")
 
-# Make the intended horizontal two-page gallery explicit and make sure no
-# competing gallery-level horizontal drag recognizer captures the gesture.
-old_page_view = """            child: PageView(
-              controller: _galleryPageController,
+# Native PageView gestures passed widget tests but were not reliable on the
+# user's physical phone. Observe raw pointer events around the entire gallery;
+# this does not compete in Flutter's gesture arena with vertical GridView scroll.
+gallery_state_marker = "class _GalleryTabState extends State<GalleryTab>"
+gallery_state = text.find(gallery_state_marker)
+if gallery_state < 0:
+    raise SystemExit("Could not find GalleryTab state to wire raw swipe input")
+state_old = """  int _selectedGalleryPage = 0;
+  final PageController _galleryPageController = PageController();
 """
-new_page_view = """            child: PageView(
-              scrollDirection: Axis.horizontal,
-              physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
-              controller: _galleryPageController,
+state_new = """  int _selectedGalleryPage = 0;
+  Offset? _galleryPointerStart;
+  final PageController _galleryPageController = PageController();
 """
-if old_page_view in text:
-    text = text.replace(old_page_view, new_page_view, 1)
-    print("applied: explicit horizontal gallery paging")
-elif "physics: const PageScrollPhysics(parent: ClampingScrollPhysics())," in text:
-    print("already applied: explicit horizontal gallery paging")
+if state_old in text[gallery_state:]:
+    text = text.replace(state_old, state_new, 1)
+elif state_new in text[gallery_state:]:
+    print("already applied: gallery pointer state")
 else:
-    raise SystemExit("Could not locate the generated gallery PageView")
+    raise SystemExit("Could not safely add gallery pointer start state")
 
-gallery_start = text.find("class _GalleryTabState extends State<GalleryTab>")
-gallery_end = text.find("  Widget _permissionMessage()", gallery_start)
-if gallery_start < 0 or gallery_end < 0:
+init_old = """  @override
+  void initState() {
+    super.initState();
+    _loadAssets();
+  }
+"""
+handler = """  void _handleGalleryPointerUp(PointerUpEvent event) {
+    final start = _galleryPointerStart;
+    _galleryPointerStart = null;
+    if (start == null) return;
+    final delta = event.position - start;
+    if (delta.dx.abs() < 70 || delta.dx.abs() < delta.dy.abs() * 1.2) return;
+    if (!_galleryPageController.hasClients) return;
+    final targetPage = delta.dx < 0 ? 1 : 0;
+    if (targetPage == _selectedGalleryPage) return;
+    unawaited(
+      _galleryPageController.animateToPage(
+        targetPage,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAssets();
+  }
+"""
+init_pos = text.find(init_old, gallery_state)
+if init_pos >= 0:
+    text = text[:init_pos] + handler + text[init_pos + len(init_old):]
+elif "void _handleGalleryPointerUp(PointerUpEvent event)" in text[gallery_state:]:
+    print("already applied: raw pointer swipe handler")
+else:
+    raise SystemExit("Could not insert gallery pointer swipe handler")
+
+root_old = """    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+"""
+root_new = """    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (event) => _galleryPointerStart = event.position,
+      onPointerCancel: (_) => _galleryPointerStart = null,
+      onPointerUp: _handleGalleryPointerUp,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+"""
+root_pos = text.find(root_old, gallery_state)
+if root_pos >= 0:
+    text = text[:root_pos] + root_new + text[root_pos + len(root_old):]
+elif "onPointerUp: _handleGalleryPointerUp," in text[gallery_state:]:
+    print("already applied: raw pointer listener over gallery")
+else:
+    raise SystemExit("Could not wrap GalleryTab in a raw pointer Listener")
+
+close_old = """        ],
+      ),
+    );
+  }
+
+  Widget _buildGalleryPage("""
+close_new = """        ],
+      ),
+    ),
+    );
+  }
+
+  Widget _buildGalleryPage("""
+close_pos = text.find(close_old, gallery_state)
+if close_pos >= 0:
+    text = text[:close_pos] + close_new + text[close_pos + len(close_old):]
+elif "Widget _buildGalleryPage(" in text[gallery_state:] and "    ),\n    );\n  }\n\n  Widget _buildGalleryPage(" in text[gallery_state:]:
+    print("already applied: Listener closes around entire gallery")
+else:
+    raise SystemExit("Could not safely close the raw pointer Listener")
+
+# Keep the gesture logic in Listener alone; PageView is animated programmatically.
+page_old = """            child: PageView(
+              controller: _galleryPageController,
+"""
+page_new = """            child: PageView(
+              physics: const NeverScrollableScrollPhysics(),
+              controller: _galleryPageController,
+"""
+if page_old in text[gallery_state:]:
+    text = text[:gallery_state] + text[gallery_state:].replace(page_old, page_new, 1)
+elif "physics: const NeverScrollableScrollPhysics(),\n              controller: _galleryPageController," in text[gallery_state:]:
+    print("already applied: PageView uses Listener-controlled movement")
+else:
+    raise SystemExit("Could not disable competing native PageView swipe recognizer")
+
+gallery_end = text.find("  Widget _permissionMessage()", gallery_state)
+if gallery_end < 0:
     raise SystemExit("Could not validate GalleryTab gesture hierarchy")
-gallery = text[gallery_start:gallery_end]
+gallery = text[gallery_state:gallery_end]
 if "onHorizontalDragStart:" in gallery or "onHorizontalDragUpdate:" in gallery or "onHorizontalDragEnd:" in gallery:
-    raise SystemExit("A competing horizontal drag handler remains around GalleryTab")
+    raise SystemExit("A competing horizontal drag recognizer remains around GalleryTab")
 
-# The existing final navigation patch must intercept system back on the Gallery
-# tab. Fail the build rather than silently shipping an app that exits.
+# The existing final navigation patch must intercept system back on the Gallery tab.
 if "home: PopScope<Object?>(" not in text or "if (!didPop && _selectedTab != 0) _openCamera();" not in text:
     raise SystemExit("System back must be intercepted to return from Gallery to Camera")
 
