@@ -88,7 +88,10 @@ replace_once(
     }
     try {
       _minZoom = await controller.getMinZoomLevel();
-      _maxZoom = await controller.getMaxZoomLevel();
+      final deviceMaxZoom = await controller.getMaxZoomLevel();
+      // Keep digital zoom moderate so details do not break up at extreme levels.
+      _maxZoom = deviceMaxZoom > 4.0 ? 4.0 : deviceMaxZoom;
+      if (_maxZoom < _minZoom) _maxZoom = _minZoom;
     } catch (_) {
       _minZoom = 1;
       _maxZoom = 1;
@@ -161,16 +164,36 @@ replace_once(
     _zoomUpdateInFlight = true;
     try {
       while (mounted && identical(_controller, controller)) {
-        final target = _requestedZoom;
-        await controller.setZoomLevel(target);
-        _zoomLevel = target;
-        if ((_requestedZoom - target).abs() < 0.01) break;
+        final target = _requestedZoom
+            .clamp(_minZoom, _maxZoom)
+            .toDouble();
+        final difference = target - _zoomLevel;
+        if (difference.abs() <= 0.02) {
+          if (difference.abs() > 0.001) {
+            await controller.setZoomLevel(target);
+            _zoomLevel = target;
+          }
+          if ((_requestedZoom - _zoomLevel).abs() < 0.01) break;
+          continue;
+        }
+
+        // Ease toward the latest pinch target instead of jumping to each
+        // gesture event. Keep native camera zoom in control of the image;
+        // never enlarge the preview widget itself (which causes pixelation).
+        final next = (_zoomLevel + difference * 0.30)
+            .clamp(_minZoom, _maxZoom)
+            .toDouble();
+        await controller.setZoomLevel(next);
+        _zoomLevel = next;
+        await Future<void>.delayed(const Duration(milliseconds: 16));
       }
     } catch (_) {
       // Zoom is optional; leave the camera working if a device rejects it.
     } finally {
       _zoomUpdateInFlight = false;
-      if (mounted && (_requestedZoom - _zoomLevel).abs() >= 0.01) {
+      if (mounted &&
+          identical(_controller, controller) &&
+          (_requestedZoom - _zoomLevel).abs() >= 0.01) {
         unawaited(_applyZoom());
       }
     }
@@ -568,6 +591,26 @@ new_gallery = """          Expanded(
           ),
 """
 replace_once(old_gallery, new_gallery, "pull-to-refresh gallery list")
+
+replace_once(
+    """      body: Center(
+        child: isVideo
+            ? _videoBody()
+            : Image.file(widget.file, fit: BoxFit.contain),
+      ),""",
+    """      body: Center(
+        child: isVideo
+            ? _videoBody()
+            : InteractiveViewer(
+                minScale: 1.0,
+                maxScale: 4.0,
+                panEnabled: true,
+                scaleEnabled: true,
+                child: Image.file(widget.file, fit: BoxFit.contain),
+              ),
+      ),""",
+    "smooth, full-resolution photo zoom",
+)
 
 path.write_text(text, encoding="utf-8")
 print("Camera feature patch complete.")

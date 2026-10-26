@@ -201,7 +201,7 @@ if "Movies/Camera" in text or "Movies/Camera" in video_method:
     raise SystemExit("Video-save method still contains an unwanted Movies destination.")
 print("fixed: save photos/videos silently under DCIM, with a DCIM-only video fallback")
 
-# Reduce abrupt pinch response and ease camera zoom towards each requested value.
+# Reduce pinch sensitivity and ease native camera zoom over frame-paced steps.
 zoom_methods = """  void _onZoomUpdate(ScaleUpdateDetails details) {
     final controller = _controller;
     if (details.pointerCount < 2 ||
@@ -210,7 +210,7 @@ zoom_methods = """  void _onZoomUpdate(ScaleUpdateDetails details) {
         !controller.value.isInitialized) {
       return;
     }
-    final smoothedScale = 1.0 + (details.scale - 1.0) * 0.70;
+    final smoothedScale = 1.0 + (details.scale - 1.0) * 0.55;
     _requestedZoom =
         (_zoomAtScaleStart * smoothedScale).clamp(_minZoom, _maxZoom).toDouble();
     unawaited(_applyZoom());
@@ -235,12 +235,12 @@ zoom_methods = """  void _onZoomUpdate(ScaleUpdateDetails details) {
           continue;
         }
 
-        final next = (_zoomLevel + delta * 0.40)
+        final next = (_zoomLevel + delta * 0.24)
             .clamp(_minZoom, _maxZoom)
             .toDouble();
         await controller.setZoomLevel(next);
         _zoomLevel = next;
-        await Future<void>.delayed(const Duration(milliseconds: 8));
+        await Future<void>.delayed(const Duration(milliseconds: 16));
       }
     } catch (_) {
       // Zoom is optional; keep the camera active if a device rejects an update.
@@ -273,7 +273,7 @@ if text.count(zoom_start_old) == 1:
     text = text.replace(zoom_start_old, zoom_start_new, 1)
 elif zoom_start_new not in text:
     raise SystemExit("Could not safely adjust zoom gesture start.")
-print("fixed: eased pinch zoom with lower sensitivity to reduce abrupt jumps")
+print("fixed: frame-paced smooth pinch zoom with reduced digital zoom sensitivity")
 
 source.write_text(text, encoding="utf-8")
 print("Camera final interaction patch complete.")
