@@ -39,18 +39,21 @@ export PATH="$HOME/flutter/bin:$PATH"
 echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
 flutter --version
 
-echo "== Install the current Android CLI =="
-curl --fail --silent --show-error --location --retry 3 \
-  "https://dl.google.com/android/cli/latest/linux_x86_64/install.sh" \
-  --output /tmp/android-cli-install.sh
-bash /tmp/android-cli-install.sh
-export PATH="$HOME/.local/bin:$HOME/flutter/bin:$PATH"
-echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
+echo "== Install the current Android CLI in a writable user directory =="
 ANDROID_HOME="$HOME/android-sdk"
 ANDROID_SDK_ROOT="$ANDROID_HOME"
-mkdir -p "$ANDROID_HOME"
+ANDROID_CLI_BIN="$HOME/android-cli/bin"
+mkdir -p "$ANDROID_HOME" "$ANDROID_CLI_BIN"
+curl --fail --silent --show-error --location --retry 3 \
+  "https://dl.google.com/android/cli/latest/linux_x86_64/android" \
+  --output "$ANDROID_CLI_BIN/android"
+chmod 755 "$ANDROID_CLI_BIN/android"
 export ANDROID_HOME ANDROID_SDK_ROOT
+export PATH="$ANDROID_CLI_BIN:$HOME/flutter/bin:$PATH"
+{
+  echo "$ANDROID_CLI_BIN"
+  echo "$HOME/flutter/bin"
+} >> "$GITHUB_PATH"
 {
   echo "ANDROID_HOME=$ANDROID_HOME"
   echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
