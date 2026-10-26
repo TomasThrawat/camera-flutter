@@ -1,26 +1,27 @@
 # Camera
 
-A minimal Android-first Flutter camera app with only two main destinations:
+A minimal Android-first Flutter camera app with two primary destinations: Camera (photo/video capture) and Gallery (local photos/videos).
 
-- **Camera** — switch between Photo and Video, capture still images, record clips, toggle the torch, and switch front/back cameras.
-- **Gallery** — view photos and videos saved in the device media library, open photos, and play videos.
+Design: pure black surfaces, white controls, and a Flutter Foundry-generated icon with a pure black background and centered white circular camera mark.
 
-Visual style: pure black surfaces with white controls. The app icon was made with Flutter Foundry: a pure black background and a centered white circular camera mark.
+## Current CircleCI setup
 
-## Build it locally
+The existing CircleCI pipeline definition is currently reported by the CircleCI API as the gha workflow. Its config source path is .circleci/config.yml, so that file contains a GitHub Actions-compatible workflow that CircleCI can execute through its GitHub App pipeline integration.
+
+The standard CircleCI-native configuration is preserved separately at .circleci/native-config.yml.
+
+The pipeline prepares Android platform files, restores the generated icon from Base64, resolves packages, formats and analyzes Dart, runs Flutter tests, builds an ARM64 release APK, and uploads camera-arm64-release.apk as the camera-arm64-release artifact.
+
+## Build locally
 
 Use Flutter stable (Dart 3.12 or later) and Android SDK tools.
 
-1. Run \`bash tool/prepare_android.sh\` to generate the Android platform files, add camera/microphone/media permissions, and restore the generated icon PNG from the checked-in Base64 source.
-2. Run \`flutter pub get\`.
-3. Run \`dart run flutter_launcher_icons\`.
-4. Run \`flutter analyze\` and \`flutter test\`.
-5. Build an ARM64 release APK with \`flutter build apk --release --target-platform android-arm64\`.
-
-## CircleCI
-
-The \`.circleci/config.yml\` pipeline prepares the Android project, generates the native launcher icon, formats/analyzes the Dart source, runs tests, and produces an ARM64 APK. The artifact is published as \`camera-arm64-release.apk\`.
+1. Run bash tool/prepare_android.sh.
+2. Run flutter pub get.
+3. Run dart run flutter_launcher_icons.
+4. Run dart format lib test, then flutter analyze and flutter test.
+5. Run flutter build apk --release --target-platform android-arm64.
 
 ## Permissions
 
-The app requests camera access for capture, microphone access for video recording, and media library access to save and display photos/videos. Captures are saved to the device Gallery through \`photo_manager\`.
+The app requests camera access for photo/video capture, microphone access for video, and media-library access to save and show photos and videos.

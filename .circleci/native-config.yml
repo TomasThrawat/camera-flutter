@@ -1,0 +1,38 @@
+version: 2.1
+
+jobs:
+  build-android:
+    docker:
+      - image: ghcr.io/cirruslabs/flutter:stable
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Prepare Android project and icon
+          command: bash tool/prepare_android.sh
+      - run:
+          name: Resolve packages
+          command: flutter pub get
+      - run:
+          name: Generate launcher icons
+          command: dart run flutter_launcher_icons
+      - run:
+          name: Format Dart source
+          command: dart format lib test
+      - run:
+          name: Analyze Flutter source
+          command: flutter analyze --fatal-infos
+      - run:
+          name: Run tests
+          command: flutter test --reporter expanded
+      - run:
+          name: Build ARM64 release APK
+          command: flutter build apk --release --target-platform android-arm64
+      - store_artifacts:
+          path: build/app/outputs/flutter-apk/app-release.apk
+          destination: camera-arm64-release.apk
+
+workflows:
+  camera-ci:
+    jobs:
+      - build-android
