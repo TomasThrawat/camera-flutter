@@ -16,7 +16,11 @@ jobs:
         uses: actions/checkout@v7.0.1
 
       - name: Install Flutter and Android SDK
-        run: bash .circleci/install_android_flutter.sh
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev mesa-utils
+          bash .circleci/install_android_flutter.sh
 
       - name: Apply verified Dart analyzer fixes
         run: python3 tool/fix_analyzer_warnings.py
