@@ -66,7 +66,7 @@ video = """  Future<void> _saveVideo(XFile video) async {
           return;
         }
       }
-      if (saved != null) widget.onMediaSaved();
+      widget.onMediaSaved();
     } catch (_) {
       // Capture stays silent; never fall back to Movies or show a save popup.
     }
