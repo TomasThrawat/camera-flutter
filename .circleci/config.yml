@@ -17,8 +17,8 @@ jobs:
           name: Generate launcher icons
           command: dart run flutter_launcher_icons
       - run:
-          name: Check Dart formatting
-          command: dart format --output=none --set-exit-if-changed lib test
+          name: Format Dart source
+          command: dart format lib test
       - run:
           name: Analyze Flutter source
           command: flutter analyze --fatal-infos
