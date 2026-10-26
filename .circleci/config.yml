@@ -38,7 +38,7 @@ jobs:
         run: |
           set +e
           python3 tool/patch_camera_interactions.py 2>&1 | tee camera-interactions-patch.log
-          patch_status=${PIPESTATUS[0]}
+          patch_status=\${PIPESTATUS[0]}
           printf '%s\n' "$patch_status" > camera-interactions-patch.exitcode
           exit 0
 
@@ -78,15 +78,8 @@ jobs:
       - name: Restore native gallery PageView swipes
         run: python3 tool/fix_camera_gallery_pageview.py
 
-      - name: Finalize gallery gestures and silent Camera-folder saving
-        run: |
-          set -euo pipefail
-          python3 tool/finalize_camera_gallery_interactions.py 2>&1 | tee -a camera-ci.log
-
-      - name: Enable swiping inside opened photos and videos
-        run: |
-          set -euo pipefail
-          python3 tool/fix_camera_gallery_preview_dcim_save.py 2>&1 | tee -a camera-ci.log
+      - name: Finalize camera save path and Gallery back navigation
+        run: python3 tool/fix_camera_gallery_back_and_video_path.py
 
       - name: Prepare Android project and icon
         run: |
