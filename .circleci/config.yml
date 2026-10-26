@@ -28,6 +28,9 @@ jobs:
       - name: Apply camera zoom and video controls
         run: python3 tool/patch_camera_features.py
 
+      - name: Apply full-screen capture UI
+        run: python3 tool/patch_camera_fullscreen_ui.py
+
       - name: Make camera preview fullscreen
         run: python3 tool/patch_fullscreen_camera_preview.py
 
