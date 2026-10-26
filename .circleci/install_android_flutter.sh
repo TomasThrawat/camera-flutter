@@ -8,7 +8,7 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "== Install base tools =="
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl git python3 unzip xz-utils zip libglu1-mesa
+sudo apt-get install -y curl git python3 unzip xz-utils zip libglu1-mesa
 
 echo "== Resolve latest stable Flutter archive =="
 RELEASE_JSON="$(mktemp)"
@@ -67,7 +67,8 @@ yes | android --no-metrics --sdk="$ANDROID_HOME" sdk install \
   platforms/android-35 \
   platforms/android-36 \
   build-tools/35.0.0 \
-  build-tools/36.0.0
+  build-tools/36.0.0 \
+  ndk/28.2.13676358
 set -o pipefail
 
 flutter config --android-sdk "$ANDROID_HOME"
