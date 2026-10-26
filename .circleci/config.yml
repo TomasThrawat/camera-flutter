@@ -75,6 +75,9 @@ jobs:
       - name: Fix video-save analyzer warning
         run: python3 tool/fix_camera_video_save_analyzer.py
 
+      - name: Restore native gallery PageView swipes
+        run: python3 tool/fix_camera_gallery_pageview.py
+
       - name: Prepare Android project and icon
         run: |
           set -euo pipefail
