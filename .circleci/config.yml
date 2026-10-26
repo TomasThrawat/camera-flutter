@@ -21,6 +21,9 @@ jobs:
       - name: Apply verified Dart analyzer fixes
         run: python3 tool/fix_analyzer_warnings.py
 
+      - name: Make camera preview fullscreen
+        run: python3 tool/patch_fullscreen_camera_preview.py
+
       - name: Prepare Android project and icon
         run: |
           set -euo pipefail
