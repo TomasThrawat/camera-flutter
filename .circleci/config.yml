@@ -78,8 +78,10 @@ jobs:
       - name: Restore native gallery PageView swipes
         run: python3 tool/fix_camera_gallery_pageview.py
 
-      - name: Finalize video folder, gallery swipes, and system back
-        run: python3 tool/fix_camera_media_gallery_navigation.py
+      - name: Finalize gallery gestures and silent Camera-folder saving
+        run: |
+          set -euo pipefail
+          python3 tool/finalize_camera_gallery_interactions.py 2>&1 | tee -a camera-ci.log
 
       - name: Prepare Android project and icon
         run: |
