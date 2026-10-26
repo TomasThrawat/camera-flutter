@@ -161,52 +161,35 @@ print("verified: preserve existing GalleryTab gesture handling without a competi
 main_path.write_text(text, encoding="utf-8")
 print("wrote: final Dart media-save and system-back changes")
 
-# Make the regression test swipe on the header, which proves the gesture works
-# across the whole gallery, not only when a drag starts inside PageView.
+# The Gallery's native PageView owns swipes in the media area. Keep the regression test
+# on that real swipe surface rather than trying to drag the header label.
 test_path = Path("test/widget_test.dart")
 if test_path.exists():
     test_text = test_path.read_text(encoding="utf-8")
 
-    def replace_page_drag(match: re.Match) -> str:
+    def use_pageview_drag(match: re.Match) -> str:
         dx = int(match.group(1))
-        if dx < 0:
-            return (
-                "await tester.drag(find.textContaining('swipe left for videos'), "
-                "const Offset(-350, 0));"
-            )
-        return (
-            "await tester.drag(find.textContaining('swipe right for photos'), "
-            "const Offset(350, 0));"
-        )
+        offset = -700 if dx < 0 else 700
+        return f"await tester.drag(find.byType(PageView), const Offset({offset}, 0));"
 
-    test_text, changed = re.subn(
-        r"await tester\.drag\(find\.byType\(PageView\), const Offset\((-?\d+), 0\)\);",
-        replace_page_drag,
-        test_text,
+    drag_pattern = re.compile(
+        r"await tester\.drag\(\s*(?:find\.byType\(PageView\)|"
+        r"find\.textContaining\('swipe (?:left for videos|right for photos)'\)),"
+        r"\s*const Offset\((-?\d+),\s*0\)\s*\);",
+        re.DOTALL,
     )
-    # Handle the old multi-line reverse-swipe test if a prior script left it.
-    old_reverse = """await tester.drag(
-      find.textContaining('swipe right for photos'),
-      const Offset(700, 0),
-    );"""
-    if old_reverse in test_text:
-        test_text = test_text.replace(
-            old_reverse,
-            "await tester.drag(find.textContaining('swipe right for photos'), "
-            "const Offset(350, 0));",
-            1,
+    test_text, changed = drag_pattern.subn(use_pageview_drag, test_text)
+    if changed < 2:
+        raise SystemExit(
+            f"Gallery swipe regression test expected two PageView drags; updated {changed}."
         )
-        changed += 1
-    if changed:
-        test_path.write_text(test_text, encoding="utf-8")
-        print("applied: swipe regression test targets both visible gallery labels")
-    elif (
-        "find.textContaining('swipe left for videos')" not in test_text
-        or "find.textContaining('swipe right for photos')" not in test_text
+    if (
+        "await tester.drag(find.byType(PageView), const Offset(-700, 0));" not in test_text
+        or "await tester.drag(find.byType(PageView), const Offset(700, 0));" not in test_text
     ):
-        raise SystemExit("Gallery swipe regression test could not be updated.")
-    else:
-        print("already applied: swipe regression test")
+        raise SystemExit("Gallery swipe test must drag the PageView in both directions.")
+    test_path.write_text(test_text, encoding="utf-8")
+    print("verified: swipe regression test targets native PageView in both directions")
 else:
     raise SystemExit("test/widget_test.dart not found.")
 
