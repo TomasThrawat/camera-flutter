@@ -1,0 +1,24 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub/
+build/
+coverage/
+*.freezed.dart
+*.g.dart
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Generated locally / by CircleCI
+/android/
+/assets/camera_app_icon.png
+/ios/
+/linux/
+/macos/
+/web/
+/windows/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
