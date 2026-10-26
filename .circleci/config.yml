@@ -31,6 +31,11 @@ jobs:
           set -euo pipefail
           flutter pub get 2>&1 | tee -a camera-ci.log
 
+      - name: Migrate photo_manager to built-in Kotlin for this CI build
+        run: |
+          set -euo pipefail
+          python3 tool/patch_photo_manager_gradle.py 2>&1 | tee -a camera-ci.log
+
       - name: Generate launcher icons
         run: |
           set -euo pipefail
@@ -44,17 +49,17 @@ jobs:
       - name: Analyze Flutter source
         run: |
           set -euo pipefail
-          flutter analyze --fatal-infos 2>&1 | tee -a camera-ci.log
+          flutter analyze --no-pub --fatal-infos 2>&1 | tee -a camera-ci.log
 
       - name: Run widget tests
         run: |
           set -euo pipefail
-          flutter test --reporter expanded 2>&1 | tee -a camera-ci.log
+          flutter test --no-pub --reporter expanded 2>&1 | tee -a camera-ci.log
 
       - name: Build ARM64 release APK
         run: |
           set -euo pipefail
-          flutter build apk --release --target-platform android-arm64 2>&1 | tee -a camera-ci.log
+          flutter build apk --no-pub --release --target-platform android-arm64 2>&1 | tee -a camera-ci.log
 
       - name: Upload complete build diagnostics
         if: always()
