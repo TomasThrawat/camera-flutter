@@ -74,3 +74,6 @@ PY
 
 python3 tool/patch_android_manifest.py
 base64 --decode assets/camera_app_icon.png.b64 > assets/camera_app_icon.png
+
+# Apply the final gallery navigation, swipe, and DCIM video-save fix.
+python3 tool/fix_camera_back_swipe_and_media_save.py
