@@ -47,6 +47,7 @@ save_methods = """  Future<void> _savePhoto(XFile image) async {
       await PhotoManager.editor.saveImageWithPath(
         image.path,
         title: _mediaTitle('.jpg'),
+        relativePath: 'DCIM/Camera',
       );
       widget.onMediaSaved();
     } catch (_) {
@@ -140,106 +141,23 @@ if removed:
 else:
     print("already applied: no top-right Camera/Refresh icon")
 
-# Use one explicit full-gallery horizontal gesture handler. Disable the
-# PageView's competing recognizer while retaining animated page changes.
+# The earlier gallery patch already owns gesture arbitration. Do not add a second
+# horizontal recognizer or change PageView physics here; doing so caused the CI
+# patch to fail when the existing handler is a raw Listener.
 gallery_start = text.find("class _GalleryTabState extends State<GalleryTab>")
 page_method = text.find("  Widget _buildGalleryPage(", gallery_start)
 build_start = text.find("  Widget build(BuildContext context) {", gallery_start)
 if min(gallery_start, page_method, build_start) < 0 or page_method < build_start:
-    raise SystemExit("Could not locate GalleryTab build/page methods.")
+    raise SystemExit("Could not verify the existing GalleryTab gesture implementation.")
 gallery_build = text[build_start:page_method]
-
-if "_manualSwipeDistance" not in text:
-    replace_once(
-        "final PageController _galleryPageController = PageController();",
-        "final PageController _galleryPageController = PageController();\n"
-        "  double _manualSwipeDistance = 0;",
-        "gallery swipe state",
-    )
-    # Refresh the offsets after the insertion.
-    gallery_start = text.find("class _GalleryTabState extends State<GalleryTab>")
-    page_method = text.find("  Widget _buildGalleryPage(", gallery_start)
-    build_start = text.find("  Widget build(BuildContext context) {", gallery_start)
-    gallery_build = text[build_start:page_method]
-
-if "onHorizontalDragEnd:" not in gallery_build:
-    old_open = "    return SafeArea(\n      child: Column("
-    if gallery_build.count(old_open) != 1:
-        raise SystemExit("Could not safely add the gallery-wide swipe handler.")
-    new_open = """    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragStart: (_) => _manualSwipeDistance = 0,
-      onHorizontalDragUpdate: (details) =>
-          _manualSwipeDistance += details.delta.dx,
-      onHorizontalDragEnd: (_) {
-        final distance = _manualSwipeDistance;
-        _manualSwipeDistance = 0;
-        if (distance.abs() < 50 || !_galleryPageController.hasClients) return;
-        final target = distance < 0 ? 1 : 0;
-        if (target == _selectedGalleryPage) return;
-        unawaited(
-          _galleryPageController.animateToPage(
-            target,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-          ),
-        );
-      },
-      child: SafeArea(
-        child: Column("""
-    gallery_build = gallery_build.replace(old_open, new_open, 1)
-    old_end = "\n    );\n  }\n\n"
-    if not gallery_build.endswith(old_end):
-        raise SystemExit("Could not safely close the gallery-wide swipe handler.")
-    gallery_build = gallery_build[:-len(old_end)] + "\n    ),\n    );\n  }\n\n"
-    text = text[:build_start] + gallery_build + text[page_method:]
-    print("applied: horizontal swipe works across the entire Gallery screen")
-else:
-    print("already applied: gallery-wide horizontal swipe handler")
-
-gallery_start = text.find("class _GalleryTabState extends State<GalleryTab>")
-page_method = text.find("  Widget _buildGalleryPage(", gallery_start)
-gallery_segment = text[gallery_start:page_method]
-pageview_old = "            child: PageView(\n              controller: _galleryPageController,"
-pageview_new = (
-    "            child: PageView(\n"
-    "              physics: const NeverScrollableScrollPhysics(),\n"
-    "              controller: _galleryPageController,"
-)
-if pageview_old in gallery_segment:
-    gallery_segment = gallery_segment.replace(pageview_old, pageview_new, 1)
-    text = text[:gallery_start] + gallery_segment + text[page_method:]
-    print("applied: PageView uses controller-driven swipe animation")
-elif "physics: const NeverScrollableScrollPhysics()," in gallery_segment:
-    print("already applied: PageView gesture arbitration")
-else:
-    raise SystemExit("Could not locate the gallery PageView controller.")
-
-# Dispose PageController to avoid leaking its animation resources.
-gallery_start = text.find("class _GalleryTabState extends State<GalleryTab>")
-page_method = text.find("  Widget _buildGalleryPage(", gallery_start)
-gallery_segment = text[gallery_start:page_method]
-if "_galleryPageController.dispose()" not in gallery_segment:
-    init_anchor = """  @override
-  void initState() {
-    super.initState();
-    _loadAssets();
-  }
-"""
-    if gallery_segment.count(init_anchor) != 1:
-        raise SystemExit("Could not insert GalleryTab controller disposal.")
-    dispose_block = init_anchor + """
-  @override
-  void dispose() {
-    _galleryPageController.dispose();
-    super.dispose();
-  }
-"""
-    gallery_segment = gallery_segment.replace(init_anchor, dispose_block, 1)
-    text = text[:gallery_start] + gallery_segment + text[page_method:]
-    print("applied: dispose gallery PageController")
+if not any(token in gallery_build for token in (
+    "Listener(", "onPointerMove:", "onHorizontalDragEnd:", "onHorizontalDragUpdate:",
+)) and "NeverScrollableScrollPhysics()" in gallery_build:
+    raise SystemExit("Gallery swipes appear disabled with no replacement gesture handler.")
+print("verified: preserve existing GalleryTab gesture handling without a competing recognizer")
 
 main_path.write_text(text, encoding="utf-8")
+print("wrote: final Dart media-save and system-back changes")
 
 # Make the regression test swipe on the header, which proves the gesture works
 # across the whole gallery, not only when a drag starts inside PageView.
