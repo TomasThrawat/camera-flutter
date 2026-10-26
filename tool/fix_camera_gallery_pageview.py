@@ -269,9 +269,15 @@ zoom_start_old = """  void _onZoomStart(ScaleStartDetails details) {
 zoom_start_new = """  void _onZoomStart(ScaleStartDetails details) {
     _zoomAtScaleStart = _requestedZoom;
   }"""
+zoom_start_clamped = """  void _onZoomStart(ScaleStartDetails details) {
+    // Start at the latest requested zoom, including any update still in flight.
+    _zoomAtScaleStart = _requestedZoom.clamp(_minZoom, _maxZoom).toDouble();
+  }"""
 if text.count(zoom_start_old) == 1:
     text = text.replace(zoom_start_old, zoom_start_new, 1)
-elif zoom_start_new not in text:
+elif zoom_start_new in text or zoom_start_clamped in text:
+    print("already fixed: zoom gesture starts from the latest requested zoom")
+else:
     raise SystemExit("Could not safely adjust zoom gesture start.")
 print("fixed: frame-paced smooth pinch zoom with reduced digital zoom sensitivity")
 
