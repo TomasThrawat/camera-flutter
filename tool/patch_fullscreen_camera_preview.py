@@ -4,8 +4,8 @@ from pathlib import Path
 
 source = Path("lib/main.dart")
 text = source.read_text(encoding="utf-8")
-old = "                  ClipRect(child: CameraPreview(controller))"
-new = '''                  ClipRect(
+old = "ClipRect(child: CameraPreview(controller))"
+new = """ClipRect(
                     child: SizedBox.expand(
                       child: FittedBox(
                         fit: BoxFit.cover,
@@ -21,13 +21,15 @@ new = '''                  ClipRect(
                         ),
                       ),
                     ),
-                  )'''
-if new in text:
-    print("Full-screen camera preview is already applied.")
-elif text.count(old) == 1:
+                  )"""
+
+if text.count(old) == 1:
     source.write_text(text.replace(old, new, 1), encoding="utf-8")
     print("Applied the full-screen camera preview patch (single targeted widget change).")
+elif text.count(old) == 0 and "FittedBox(" in text and "CameraPreview(controller)" in text:
+    print("Full-screen camera preview is already applied.")
 else:
     raise SystemExit(
-        f"Expected one original camera preview widget, found {text.count(old)}; refusing to change other UI."
+        f"Expected one original camera preview widget, found {text.count(old)}; "
+        "refusing to change other UI."
     )
