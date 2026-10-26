@@ -61,11 +61,11 @@ save_methods = """  Future<void> _savePhoto(XFile image) async {
       if (!await source.exists() || await source.length() == 0) return;
       final title = _mediaTitle('.mp4');
       if (Platform.isAndroid) {
-        final saved = await _cameraMediaStore.invokeMethod<bool>(
+        final saved = await _cameraMediaStore.invokeMethod<String>(
           'saveVideoToDcimCamera',
           <String, Object>{'sourcePath': source.path, 'displayName': title},
         );
-        if (saved != true) return;
+        if (saved == null || saved.isEmpty) return;
       } else {
         final saved = await PhotoManager.editor.saveVideo(
           source,
