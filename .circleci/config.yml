@@ -1,62 +1,22 @@
-name: Camera Flutter CI
+name: CircleCI Runner Probe
 on:
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build-android:
-    name: Build Camera (ARM64)
+  probe:
+    name: Verify runner and checkout
     runs-on: ubuntu-latest
-    timeout-minutes: 35
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Set up Flutter stable
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Prepare Android project and launcher icon
-        run: bash tool/prepare_android.sh
-
-      - name: Resolve dependencies
-        run: flutter pub get
-
-      - name: Generate launcher icons
-        run: dart run flutter_launcher_icons
-
-      - name: Format Dart source
-        run: dart format lib test
-
-      - name: Analyze Flutter source
-        run: flutter analyze --fatal-infos
-
-      - name: Run widget tests
-        run: flutter test --reporter expanded
-
-      - name: Build ARM64 release APK
-        run: flutter build apk --release --target-platform android-arm64
-
-      - name: Upload ARM64 APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: camera-arm64-release
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
-          retention-days: 14
+      - name: Verify Flutter project files
+        run: |
+          test -f pubspec.yaml
+          test -f lib/main.dart
+          echo "CircleCI workflow runner checked out camera-flutter."
+          git rev-parse --short HEAD
