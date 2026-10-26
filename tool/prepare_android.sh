@@ -39,23 +39,37 @@ wrapper.write_text(wrapper_text, encoding="utf-8")
 properties = Path("android/gradle.properties")
 lines = properties.read_text(encoding="utf-8").splitlines()
 updated = []
-found = False
+found_built_in_kotlin = False
+found_vfs_watch = False
 for line in lines:
     if line.startswith("android.builtInKotlin="):
-        if not found:
+        if not found_built_in_kotlin:
             updated.append("android.builtInKotlin=true")
-            found = True
+            found_built_in_kotlin = True
+    elif line.startswith("org.gradle.vfs.watch="):
+        if not found_vfs_watch:
+            updated.append("org.gradle.vfs.watch=false")
+            found_vfs_watch = True
     else:
         updated.append(line)
-if not found:
+
+if not found_built_in_kotlin:
     updated.append("android.builtInKotlin=true")
+if not found_vfs_watch:
+    # Disable the Gradle filesystem watcher in one-shot CI builds. Flutter's
+    # Android included build and project directory can otherwise register the
+    # same watched path twice, printing "Already watching path" during release.
+    updated.append("org.gradle.vfs.watch=false")
+
 properties.write_text("\n".join(updated) + "\n", encoding="utf-8")
 
 assert 'id("com.android.application") version "9.4.0" apply false' in settings_text
 assert 'id("org.jetbrains.kotlin.android") version "2.4.10" apply false' in settings_text
 assert wrapper_url in wrapper.read_text(encoding="utf-8")
-assert properties.read_text(encoding="utf-8").splitlines().count("android.builtInKotlin=true") == 1
-print("Android toolchain pinned: AGP 9.4.0 / Gradle 9.6.0 / built-in Kotlin")
+final_properties = properties.read_text(encoding="utf-8").splitlines()
+assert final_properties.count("android.builtInKotlin=true") == 1
+assert final_properties.count("org.gradle.vfs.watch=false") == 1
+print("Android toolchain pinned: AGP 9.4.0 / Gradle 9.6.0 / built-in Kotlin; Gradle VFS watching disabled for CI")
 PY
 
 python3 tool/patch_android_manifest.py
