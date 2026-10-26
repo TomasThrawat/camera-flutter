@@ -2,7 +2,9 @@ import 'package:black_camera/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('shows only Camera and Gallery as primary destinations', (tester) async {
+  testWidgets('shows only Camera and Gallery as primary destinations', (
+    tester,
+  ) async {
     await tester.pumpWidget(const CameraApp());
     await tester.pump(const Duration(milliseconds: 100));
 

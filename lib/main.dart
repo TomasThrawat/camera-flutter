@@ -222,7 +222,10 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
       final cameras = await availableCameras();
       if (!mounted) return;
       if (cameras.isEmpty) {
-        throw CameraException('no_camera', 'No camera was found on this device.');
+        throw CameraException(
+          'no_camera',
+          'No camera was found on this device.',
+        );
       }
       _cameras = cameras;
       final backIndex = cameras.indexWhere(
@@ -232,10 +235,14 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
       await _configureCamera(_cameraIndex);
     } catch (error) {
       if (mounted) {
-        setState(() => _error = 'Camera is unavailable. Check camera permission.');
+        setState(
+          () => _error = 'Camera is unavailable. Check camera permission.',
+        );
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -248,9 +255,13 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
     try {
       await _configureCamera(_cameraIndex);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Could not reopen the camera.');
+      if (mounted) {
+        setState(() => _error = 'Could not reopen the camera.');
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -284,9 +295,13 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
     try {
       await _configureCamera(nextIndex);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Could not switch camera.');
+      if (mounted) {
+        setState(() => _error = 'Could not switch camera.');
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -296,7 +311,9 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
     final enable = !_torchEnabled;
     try {
       await controller.setFlashMode(enable ? FlashMode.torch : FlashMode.off);
-      if (mounted) setState(() => _torchEnabled = enable);
+      if (mounted) {
+        setState(() => _torchEnabled = enable);
+      }
     } catch (_) {
       _message('Flash is not available on this camera.');
     }
@@ -327,7 +344,9 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
           widget.onRecordingChanged(true);
         }
         _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-          if (mounted) setState(() => _recordSeconds++);
+          if (mounted) {
+            setState(() => _recordSeconds++);
+          }
         });
       } else {
         final video = await controller.stopVideoRecording();
@@ -354,7 +373,9 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
         }
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -365,7 +386,7 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
 
   String _mediaTitle(String extension) {
     final stamp = DateTime.now().millisecondsSinceEpoch.toString();
-    return 'Camera_' + stamp + extension;
+    return 'Camera_$stamp$extension';
   }
 
   Future<void> _savePhoto(XFile image) async {
@@ -374,14 +395,10 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
         _message('Photo captured, but gallery access was denied.');
         return;
       }
-      final saved = await PhotoManager.editor.saveImageWithPath(
+      await PhotoManager.editor.saveImageWithPath(
         image.path,
         title: _mediaTitle('.jpg'),
       );
-      if (saved == null) {
-        _message('Photo captured, but could not save it to Gallery.');
-        return;
-      }
       widget.onMediaSaved();
       _message('Photo saved to Gallery.');
     } catch (_) {
@@ -395,14 +412,10 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
         _message('Video recorded, but gallery access was denied.');
         return;
       }
-      final saved = await PhotoManager.editor.saveVideo(
+      await PhotoManager.editor.saveVideo(
         File(video.path),
         title: _mediaTitle('.mp4'),
       );
-      if (saved == null) {
-        _message('Video recorded, but could not save it to Gallery.');
-        return;
-      }
       widget.onMediaSaved();
       _message('Video saved to Gallery.');
     } catch (_) {
@@ -418,7 +431,7 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
   String get _recordTime {
     final minutes = (_recordSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (_recordSeconds % 60).toString().padLeft(2, '0');
-    return minutes + ':' + seconds;
+    return '$minutes:$seconds';
   }
 
   @override
@@ -550,7 +563,8 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
                             shape: _recording || _mode == CaptureMode.video
                                 ? BoxShape.rectangle
                                 : BoxShape.circle,
-                            borderRadius: _recording || _mode == CaptureMode.video
+                            borderRadius:
+                                _recording || _mode == CaptureMode.video
                                 ? BorderRadius.circular(5)
                                 : null,
                           ),
@@ -583,7 +597,11 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
             : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.camera_alt_outlined, size: 42, color: _muted),
+                  const Icon(
+                    Icons.camera_alt_outlined,
+                    size: 42,
+                    color: _muted,
+                  ),
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 36),
@@ -682,10 +700,7 @@ class _RoundControl extends StatelessWidget {
 }
 
 class GalleryTab extends StatefulWidget {
-  const GalleryTab({
-    super.key,
-    required this.onOpenCamera,
-  });
+  const GalleryTab({super.key, required this.onOpenCamera});
 
   final VoidCallback onOpenCamera;
 
@@ -738,9 +753,13 @@ class _GalleryTabState extends State<GalleryTab> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _error = 'Could not load media from this device.');
+      if (mounted) {
+        setState(() => _error = 'Could not load media from this device.');
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -785,34 +804,37 @@ class _GalleryTabState extends State<GalleryTab> {
           Expanded(
             child: _loading
                 ? const Center(
-                    child: CircularProgressIndicator(color: _white, strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      color: _white,
+                      strokeWidth: 2,
+                    ),
                   )
                 : !_hasPermission
-                    ? _permissionMessage()
-                    : _error != null
-                        ? _emptyMessage(_error!, Icons.error_outline)
-                        : _assets.isEmpty
-                            ? _emptyMessage(
-                                'Photos and videos you take will appear here.',
-                                Icons.photo_library_outlined,
-                              )
-                            : GridView.builder(
-                                padding: const EdgeInsets.fromLTRB(3, 0, 3, 8),
-                                itemCount: _assets.length,
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  crossAxisSpacing: 3,
-                                  mainAxisSpacing: 3,
-                                ),
-                                itemBuilder: (context, index) {
-                                  final asset = _assets[index];
-                                  return _GalleryTile(
-                                    asset: asset,
-                                    onTap: () => _openAsset(asset),
-                                  );
-                                },
-                              ),
+                ? _permissionMessage()
+                : _error != null
+                ? _emptyMessage(_error!, Icons.error_outline)
+                : _assets.isEmpty
+                ? _emptyMessage(
+                    'Photos and videos you take will appear here.',
+                    Icons.photo_library_outlined,
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(3, 0, 3, 8),
+                    itemCount: _assets.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 3,
+                          mainAxisSpacing: 3,
+                        ),
+                    itemBuilder: (context, index) {
+                      final asset = _assets[index];
+                      return _GalleryTile(
+                        asset: asset,
+                        onTap: () => _openAsset(asset),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -891,7 +913,11 @@ class _GalleryTile extends StatelessWidget {
               if (bytes == null) {
                 return Container(color: const Color(0xFF181818));
               }
-              return Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true);
+              return Image.memory(
+                bytes,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              );
             },
           ),
           if (asset.type == AssetType.video)
@@ -953,7 +979,9 @@ class _AssetPreviewState extends State<_AssetPreview> {
         ),
       ),
       body: Center(
-        child: isVideo ? _videoBody() : Image.file(widget.file, fit: BoxFit.contain),
+        child: isVideo
+            ? _videoBody()
+            : Image.file(widget.file, fit: BoxFit.contain),
       ),
     );
   }
