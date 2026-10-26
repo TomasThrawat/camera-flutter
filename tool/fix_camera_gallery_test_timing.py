@@ -16,17 +16,17 @@ new = """    await tester.pumpWidget(
     );
     await tester.pump();
     expect(find.textContaining('swipe left for videos'), findsOneWidget);
-    await tester.drag(find.byType(PageView), const Offset(-350, 0));
+    await tester.drag(find.byType(PageView), const Offset(-700, 0));
     await tester.pump(const Duration(milliseconds: 800));
 """
 if text.count(old) == 1:
     text = text.replace(old, new, 1)
-    print("fixed: gallery swipe test uses finite frame pumps")
+    print("fixed: gallery swipe test uses a full-width drag and finite frame pumps")
 elif new in text:
-    print("already fixed: gallery swipe test uses finite frame pumps")
+    print("already fixed: gallery swipe test uses a full-width drag and finite frame pumps")
 else:
     raise SystemExit(
-        f"Could not safely update gallery test timing: matches={text.count(old)}"
+        f"Could not safely update gallery test gesture: matches={text.count(old)}"
     )
 
 path.write_text(text, encoding="utf-8")
