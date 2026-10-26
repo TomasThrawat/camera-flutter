@@ -60,6 +60,9 @@ jobs:
             exit "$status"
           fi
 
+      - name: Fix analyzer lint in generated camera interactions
+        run: python3 tool/fix_camera_interaction_analyzer.py
+
       - name: Prepare Android project and icon
         run: |
           set -euo pipefail
