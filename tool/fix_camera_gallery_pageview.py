@@ -122,7 +122,7 @@ photo_method = """  Future<void> _savePhoto(XFile image) async {
     }
   }"""
 text, photo_count = re.subn(
-    r"^  Future<void> _savePhoto\\(XFile image\\) async \\{.*?^  \\}",
+    r"^  Future<void> _savePhoto\(XFile image\) async \{.*?^  \}",
     photo_method,
     text,
     count=1,
@@ -166,7 +166,7 @@ video_method = """  Future<void> _saveVideo(XFile video) async {
     }
   }"""
 text, video_count = re.subn(
-    r"^  Future<void> _saveVideo\\(XFile video\\) async \\{.*?^  \\}",
+    r"^  Future<void> _saveVideo\(XFile video\) async \{.*?^  \}",
     video_method,
     text,
     count=1,
@@ -231,7 +231,7 @@ zoom_methods = """  void _onZoomUpdate(ScaleUpdateDetails details) {
 
   Future<void> _showVideoSettings() async {"""
 text, zoom_count = re.subn(
-    r"^  void _onZoomUpdate\\(ScaleUpdateDetails details\\) \\{.*?^  Future<void> _showVideoSettings\\(\\) async \\{",
+    r"^  void _onZoomUpdate\(ScaleUpdateDetails details\) \{.*?^  Future<void> _showVideoSettings\(\) async \{",
     zoom_methods,
     text,
     count=1,
