@@ -216,14 +216,17 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(MaterialApp(home: GalleryTab(onOpenCamera: () {})));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('swipe left for videos'), findsOneWidget);
     expect(find.byTooltip('Camera'), findsNothing);
     await tester.drag(find.byType(PageView), const Offset(-350, 0));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('swipe right for photos'), findsOneWidget);
     await tester.drag(find.byType(PageView), const Offset(350, 0));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('swipe left for videos'), findsOneWidget);
   });
 
@@ -231,10 +234,12 @@ void main() {
     await tester.pumpWidget(const CameraApp());
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.byTooltip('Gallery'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('swipe left for videos'), findsOneWidget);
     await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('PHOTO'), findsOneWidget);
     expect(find.textContaining('swipe left for videos'), findsNothing);
   });
