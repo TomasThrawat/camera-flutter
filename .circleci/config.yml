@@ -35,7 +35,30 @@ jobs:
         run: python3 tool/patch_fullscreen_camera_preview.py
 
       - name: Apply tap focus, gallery swipe, and inline video settings
-        run: python3 tool/patch_camera_interactions.py
+        run: |
+          set +e
+          python3 tool/patch_camera_interactions.py 2>&1 | tee camera-interactions-patch.log
+          patch_status=${PIPESTATUS[0]}
+          printf '%s\n' "$patch_status" > camera-interactions-patch.exitcode
+          exit 0
+
+      - name: Upload camera interaction patch diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: camera-interaction-patch-diagnostics
+          path: camera-interactions-patch.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Verify camera interaction patch
+        run: |
+          set -euo pipefail
+          status="$(cat camera-interactions-patch.exitcode)"
+          if [[ "$status" != "0" ]]; then
+            echo "Camera interaction patch failed with exit code $status."
+            exit "$status"
+          fi
 
       - name: Prepare Android project and icon
         run: |
@@ -70,4 +93,27 @@ jobs:
       - name: Run widget tests
         run: |
           set -euo pipefail
-          flutter test --no-pub --reporter expanded 2>&1 | tee -a camera-...[truncated]
+          flutter test --no-pub --reporter expanded 2>&1 | tee -a camera-ci.log
+
+      - name: Build ARM64 release APK
+        run: |
+          set -euo pipefail
+          flutter build apk --no-pub --release --target-platform android-arm64 2>&1 | tee -a camera-ci.log
+
+      - name: Upload complete build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: camera-build-diagnostics
+          path: camera-ci.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload ARM64 APK
+        if: success()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: camera-arm64-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
