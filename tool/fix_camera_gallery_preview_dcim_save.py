@@ -118,6 +118,7 @@ if "class _GalleryAssetViewer extends StatefulWidget" not in text:
 
 class MediaPreviewPager extends StatefulWidget {
   const MediaPreviewPager({
+    super.key,
     required this.itemCount,
     required this.initialIndex,
     required this.itemBuilder,
