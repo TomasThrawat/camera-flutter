@@ -66,6 +66,9 @@ jobs:
       - name: Fix gallery widget test to use finite frame pumps
         run: python3 tool/fix_camera_gallery_test_timing.py
 
+      - name: Apply final camera saving and navigation fixes
+        run: python3 tool/patch_camera_final_fixes.py
+
       - name: Prepare Android project and icon
         run: |
           set -euo pipefail
