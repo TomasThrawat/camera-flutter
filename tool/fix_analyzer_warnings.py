@@ -17,7 +17,7 @@ def replace_one(old: str, new: str, already_fixed: str, label: str) -> None:
 
 
 media_name = "return 'Camera_$stamp$extension';"
-media_name_braced = "return 'Camera_\${stamp}\${extension}';"
+media_name_braced = r"return 'Camera_${stamp}${extension}';"
 media_name_concat = "return 'Camera_' + stamp + extension;"
 if media_name_concat in text:
     text = text.replace(media_name_concat, media_name, 1)
