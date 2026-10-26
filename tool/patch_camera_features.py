@@ -138,7 +138,8 @@ replace_once(
 replace_once(
     "  Future<void> _switchCamera() async {\n",
     """  void _onZoomStart(ScaleStartDetails details) {
-    _zoomAtScaleStart = _zoomLevel;
+    // Start at the latest requested zoom, including any update still in flight.
+    _zoomAtScaleStart = _requestedZoom.clamp(_minZoom, _maxZoom).toDouble();
   }
 
   void _onZoomUpdate(ScaleUpdateDetails details) {
@@ -154,6 +155,9 @@ replace_once(
     unawaited(_applyZoom());
   }
 
+  // Apply the newest pinch target directly. Do not interpolate through a series
+  // of artificial zoom steps; coalesce gesture events while one platform update
+  // is in flight, then immediately apply the most recent target.
   Future<void> _applyZoom() async {
     final controller = _controller;
     if (_zoomUpdateInFlight ||
@@ -164,28 +168,11 @@ replace_once(
     _zoomUpdateInFlight = true;
     try {
       while (mounted && identical(_controller, controller)) {
-        final target = _requestedZoom
-            .clamp(_minZoom, _maxZoom)
-            .toDouble();
-        final difference = target - _zoomLevel;
-        if (difference.abs() <= 0.02) {
-          if (difference.abs() > 0.001) {
-            await controller.setZoomLevel(target);
-            _zoomLevel = target;
-          }
-          if ((_requestedZoom - _zoomLevel).abs() < 0.01) break;
-          continue;
-        }
-
-        // Ease toward the latest pinch target instead of jumping to each
-        // gesture event. Keep native camera zoom in control of the image;
-        // never enlarge the preview widget itself (which causes pixelation).
-        final next = (_zoomLevel + difference * 0.30)
-            .clamp(_minZoom, _maxZoom)
-            .toDouble();
-        await controller.setZoomLevel(next);
-        _zoomLevel = next;
-        await Future<void>.delayed(const Duration(milliseconds: 16));
+        final target = _requestedZoom.clamp(_minZoom, _maxZoom).toDouble();
+        if ((target - _zoomLevel).abs() < 0.01) break;
+        await controller.setZoomLevel(target);
+        _zoomLevel = target;
+        if ((_requestedZoom - _zoomLevel).abs() < 0.01) break;
       }
     } catch (_) {
       // Zoom is optional; leave the camera working if a device rejects it.
