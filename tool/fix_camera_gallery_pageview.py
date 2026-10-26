@@ -157,35 +157,18 @@ if photo_count != 1:
 video_method = """  Future<void> _saveVideo(XFile video) async {
     try {
       if (!await _requestMediaPermission()) return;
+
       final file = File(video.path);
       if (!await file.exists() || await file.length() == 0) return;
 
-      final title = _mediaTitle('.mp4');
-      AssetEntity? saved;
-      try {
-        saved = await PhotoManager.editor.saveVideo(
-          file,
-          title: title,
-          relativePath: 'DCIM/Camera',
-        );
-      } catch (_) {
-        // Retry in DCIM itself below; never redirect videos to Movies.
-      }
-
-      if (saved == null) {
-        try {
-          saved = await PhotoManager.editor.saveVideo(
-            file,
-            title: title,
-            relativePath: 'DCIM',
-          );
-        } catch (_) {
-          return;
-        }
-      }
+      await PhotoManager.editor.saveVideo(
+        file,
+        title: _mediaTitle('.mp4'),
+        relativePath: 'DCIM/Camera',
+      );
       widget.onMediaSaved();
     } catch (_) {
-      // Capture remains silent; never show a save-status popup.
+      // Capture remains silent; never redirect videos to a different folder.
     }
   }"""
 text, video_count = re.subn(
