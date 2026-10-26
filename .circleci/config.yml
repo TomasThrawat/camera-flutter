@@ -63,6 +63,9 @@ jobs:
       - name: Fix analyzer lint in generated camera interactions
         run: python3 tool/fix_camera_interaction_analyzer.py
 
+      - name: Fix gallery widget test to use finite frame pumps
+        run: python3 tool/fix_camera_gallery_test_timing.py
+
       - name: Prepare Android project and icon
         run: |
           set -euo pipefail
