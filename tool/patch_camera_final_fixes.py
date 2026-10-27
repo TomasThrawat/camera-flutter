@@ -254,7 +254,7 @@ if start >= 0 and end > start:
                                     _applyVideoSettings(
                                       resolution: _videoResolution,
                                       fps: _videoFps == 30 ? 60 : 30,
-                                      prioritizeFps: true,
+                                      prioritizeFps: false,
                                     ),
                                   ),
                           ),
