@@ -150,7 +150,7 @@ replace_once(
     "save recorded video to a public gallery collection with fallback",
 )
 
-# Never attempt the stutter-prone 1080p/60 FPS combination.
+# Try the exact requested resolution/FPS first; fall back only if unsupported.
 replace_once(
     """    final candidates = <({VideoResolution resolution, int fps})>[
       (resolution: resolution, fps: fps),
@@ -163,13 +163,8 @@ replace_once(
       (resolution: previousResolution, fps: previousFps),
     ];
 """,
-    """    final is1080p60 = resolution == VideoResolution.p1080 && fps == 60;
-    final candidates = <({VideoResolution resolution, int fps})>[
-      if (is1080p60 && prioritizeFps)
-        (resolution: VideoResolution.p720, fps: 60),
-      if (is1080p60 && !prioritizeFps)
-        (resolution: VideoResolution.p1080, fps: 30),
-      if (!is1080p60) (resolution: resolution, fps: fps),
+    """    final candidates = <({VideoResolution resolution, int fps})>[
+      (resolution: resolution, fps: fps),
       if (prioritizeFps && fps == 60 && resolution != VideoResolution.p720)
         (resolution: VideoResolution.p720, fps: 60),
       if (fps == 60) (resolution: resolution, fps: 30),
