@@ -193,45 +193,50 @@ zoom_methods = """  void _onZoomUpdate(ScaleUpdateDetails details) {
         !controller.value.isInitialized) {
       return;
     }
-    final smoothedScale = 1.0 + (details.scale - 1.0) * 0.55;
     _requestedZoom =
-        (_zoomAtScaleStart * smoothedScale).clamp(_minZoom, _maxZoom).toDouble();
-    unawaited(_applyZoom());
+        (_zoomAtScaleStart * details.scale).clamp(_minZoom, _maxZoom).toDouble();
+    _scheduleZoomUpdate();
   }
 
-  Future<void> _applyZoom() async {
+  // Coalesce high-frequency pointer events but never serialize platform Futures.
+  // CameraX supersedes older pending zoom requests, so the latest target can
+  // follow the user's fingers without walking through stale intermediate steps.
+  void _scheduleZoomUpdate() {
+    if (_zoomUpdateTimer?.isActive ?? false) return;
+    _zoomUpdateTimer = Timer(const Duration(milliseconds: 16), () {
+      _zoomUpdateTimer = null;
+      _dispatchLatestZoom();
+    });
+  }
+
+  void _onZoomEnd(ScaleEndDetails details) {
+    _zoomUpdateTimer?.cancel();
+    _zoomUpdateTimer = null;
+    _dispatchLatestZoom();
+  }
+
+  void _dispatchLatestZoom() {
     final controller = _controller;
-    if (_zoomUpdateInFlight ||
+    if (!mounted ||
         controller == null ||
         !controller.value.isInitialized) {
       return;
     }
-    _zoomUpdateInFlight = true;
-    try {
-      while (mounted && identical(_controller, controller)) {
-        final target = _requestedZoom;
-        final delta = target - _zoomLevel;
-        if (delta.abs() <= 0.025) {
-          await controller.setZoomLevel(target);
-          _zoomLevel = target;
-          if ((_requestedZoom - target).abs() < 0.01) break;
-          continue;
-        }
+    final target = _requestedZoom.clamp(_minZoom, _maxZoom).toDouble();
+    if ((target - _zoomLevel).abs() < 0.005) return;
+    // Track the newest requested target rather than waiting for each Future.
+    _zoomLevel = target;
+    unawaited(_applyZoomCommand(controller, target));
+  }
 
-        final next = (_zoomLevel + delta * 0.24)
-            .clamp(_minZoom, _maxZoom)
-            .toDouble();
-        await controller.setZoomLevel(next);
-        _zoomLevel = next;
-        await Future<void>.delayed(const Duration(milliseconds: 16));
-      }
+  Future<void> _applyZoomCommand(
+    CameraController controller,
+    double target,
+  ) async {
+    try {
+      await controller.setZoomLevel(target);
     } catch (_) {
-      // Zoom is optional; keep the camera active if a device rejects an update.
-    } finally {
-      _zoomUpdateInFlight = false;
-      if (mounted && (_requestedZoom - _zoomLevel).abs() >= 0.025) {
-        unawaited(_applyZoom());
-      }
+      // Superseded CameraX zoom requests may be cancelled by a newer target.
     }
   }
 
@@ -256,13 +261,18 @@ zoom_start_clamped = """  void _onZoomStart(ScaleStartDetails details) {
     // Start at the latest requested zoom, including any update still in flight.
     _zoomAtScaleStart = _requestedZoom.clamp(_minZoom, _maxZoom).toDouble();
   }"""
-if text.count(zoom_start_old) == 1:
-    text = text.replace(zoom_start_old, zoom_start_new, 1)
-elif zoom_start_new in text or zoom_start_clamped in text:
-    print("already fixed: zoom gesture starts from the latest requested zoom")
+zoom_start_current = """  void _onZoomStart(ScaleStartDetails details) {
+    _zoomUpdateTimer?.cancel();
+    _zoomUpdateTimer = null;
+    _zoomAtScaleStart = _requestedZoom.clamp(_minZoom, _maxZoom).toDouble();
+  }"""
+if zoom_start_old in text:
+    text = text.replace(zoom_start_old, zoom_start_current, 1)
+elif any(pattern in text for pattern in (zoom_start_new, zoom_start_clamped, zoom_start_current)):
+    print("already fixed: zoom gesture starts from latest target and clears stale timer")
 else:
     raise SystemExit("Could not safely adjust zoom gesture start.")
-print("fixed: frame-paced smooth pinch zoom with reduced digital zoom sensitivity")
+print("fixed: latest-target pinch zoom without serialized platform updates")
 
 source.write_text(text, encoding="utf-8")
 print("Camera final interaction patch complete.")

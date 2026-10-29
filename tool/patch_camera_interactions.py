@@ -184,6 +184,7 @@ if old_open in s[start:]:
               ),
               onScaleStart: _onZoomStart,
               onScaleUpdate: _onZoomUpdate,
+              onScaleEnd: _onZoomEnd,
               child: ClipRect(""", 1)
     close = """          )
         else
