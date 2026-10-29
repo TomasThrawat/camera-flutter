@@ -181,12 +181,6 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
   String? _error;
   int _recordSeconds = 0;
   Timer? _recordTimer;
-  double _minZoomLevel = 1.0;
-  double _maxZoomLevel = 8.0;
-  double _zoomLevel = 1.0;
-  double _zoomGestureStartLevel = 1.0;
-  double _targetZoomLevel = 1.0;
-  bool _zoomPumpRunning = false;
 
   @override
   void initState() {
@@ -287,93 +281,7 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
       await controller.dispose();
       return;
     }
-
-    try {
-      final minimumZoom = await controller.getMinZoomLevel();
-      final maximumZoom = await controller.getMaxZoomLevel();
-      if (!mounted || _controller != controller) {
-        await controller.dispose();
-        return;
-      }
-      _minZoomLevel = minimumZoom;
-      _maxZoomLevel = maximumZoom;
-      _zoomLevel = 1.0.clamp(_minZoomLevel, _maxZoomLevel).toDouble();
-      _targetZoomLevel = _zoomLevel;
-      _zoomGestureStartLevel = _zoomLevel;
-    } catch (_) {
-      _minZoomLevel = 1.0;
-      _maxZoomLevel = 8.0;
-      _zoomLevel = 1.0;
-      _targetZoomLevel = 1.0;
-      _zoomGestureStartLevel = 1.0;
-    }
-
-    if (!mounted || _controller != controller) {
-      await controller.dispose();
-      return;
-    }
     setState(() => _error = null);
-  }
-
-  void _handleZoomStart(ScaleStartDetails details) {
-    _zoomGestureStartLevel = _zoomLevel;
-    _targetZoomLevel = _zoomLevel;
-  }
-
-  void _handleZoomUpdate(ScaleUpdateDetails details) {
-    if (details.pointerCount < 2 || _busy) return;
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
-
-    _targetZoomLevel = (_zoomGestureStartLevel * details.scale)
-        .clamp(_minZoomLevel, _maxZoomLevel)
-        .toDouble();
-    if (!_zoomPumpRunning) {
-      unawaited(_pumpZoomUpdates());
-    }
-  }
-
-  Future<void> _pumpZoomUpdates() async {
-    if (_zoomPumpRunning) return;
-    _zoomPumpRunning = true;
-    try {
-      while (mounted) {
-        final controller = _controller;
-        if (controller == null || !controller.value.isInitialized) break;
-
-        final target = _targetZoomLevel;
-        final difference = target - _zoomLevel;
-        if (difference.abs() <= 0.01) {
-          if (difference.abs() > 0.001) {
-            try {
-              await controller.setZoomLevel(target);
-            } catch (_) {
-              break;
-            }
-            if (!mounted || _controller != controller) break;
-            _zoomLevel = target;
-          }
-          if ((_targetZoomLevel - _zoomLevel).abs() <= 0.015) break;
-          continue;
-        }
-
-        // Serialize native zoom calls and cap each change to avoid visible jumps.
-        final step = (difference * 0.28).clamp(-0.12, 0.12).toDouble();
-        final nextZoom = (_zoomLevel + step)
-            .clamp(_minZoomLevel, _maxZoomLevel)
-            .toDouble();
-        try {
-          await controller.setZoomLevel(nextZoom);
-        } catch (_) {
-          break;
-        }
-        if (!mounted || _controller != controller) break;
-        _zoomLevel = nextZoom;
-        await Future<void>.delayed(const Duration(milliseconds: 16));
-      }
-    } finally {
-      _zoomPumpRunning = false;
-    }
   }
 
   Future<void> _switchCamera() async {
@@ -539,14 +447,7 @@ class _CameraTabState extends State<CameraTab> with WidgetsBindingObserver {
                 if (controller != null &&
                     controller.value.isInitialized &&
                     _error == null)
-                  ClipRect(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onScaleStart: _handleZoomStart,
-                      onScaleUpdate: _handleZoomUpdate,
-                      child: CameraPreview(controller),
-                    ),
-                  )
+                  ClipRect(child: CameraPreview(controller))
                 else
                   _cameraPlaceholder(),
                 Positioned(
