@@ -43,7 +43,7 @@ replace_once(
   double _zoomLevel = 1;
   double _zoomAtScaleStart = 1;
   double _requestedZoom = 1;
-  bool _zoomUpdateInFlight = false;
+  Timer? _zoomUpdateTimer;
 """,
     "camera settings and zoom state",
 )
@@ -138,7 +138,8 @@ replace_once(
 replace_once(
     "  Future<void> _switchCamera() async {\n",
     """  void _onZoomStart(ScaleStartDetails details) {
-    // Start at the latest requested zoom, including any update still in flight.
+    _zoomUpdateTimer?.cancel();
+    _zoomUpdateTimer = null;
     _zoomAtScaleStart = _requestedZoom.clamp(_minZoom, _maxZoom).toDouble();
   }
 
@@ -152,37 +153,50 @@ replace_once(
     }
     _requestedZoom =
         (_zoomAtScaleStart * details.scale).clamp(_minZoom, _maxZoom).toDouble();
-    unawaited(_applyZoom());
+    _scheduleZoomUpdate();
   }
 
-  // Apply the newest pinch target directly. Do not interpolate through a series
-  // of artificial zoom steps; coalesce gesture events while one platform update
-  // is in flight, then immediately apply the most recent target.
-  Future<void> _applyZoom() async {
+  // Coalesce high-frequency pointer events to roughly one command per display
+  // frame, but never wait for a previous platform Future before sending the next
+  // target. CameraX supersedes older pending zoom requests, so the newest target
+  // can follow the fingers instead of stepping through stale intermediate values.
+  void _scheduleZoomUpdate() {
+    if (_zoomUpdateTimer?.isActive ?? false) return;
+    _zoomUpdateTimer = Timer(const Duration(milliseconds: 16), () {
+      _zoomUpdateTimer = null;
+      _dispatchLatestZoom();
+    });
+  }
+
+  void _onZoomEnd(ScaleEndDetails details) {
+    _zoomUpdateTimer?.cancel();
+    _zoomUpdateTimer = null;
+    _dispatchLatestZoom();
+  }
+
+  void _dispatchLatestZoom() {
     final controller = _controller;
-    if (_zoomUpdateInFlight ||
+    if (!mounted ||
         controller == null ||
         !controller.value.isInitialized) {
       return;
     }
-    _zoomUpdateInFlight = true;
+    final target = _requestedZoom.clamp(_minZoom, _maxZoom).toDouble();
+    if ((target - _zoomLevel).abs() < 0.005) return;
+    // Track the newest command target, not a completed Future: earlier zoom
+    // Futures can complete later or be cancelled when CameraX receives a newer one.
+    _zoomLevel = target;
+    unawaited(_applyZoomCommand(controller, target));
+  }
+
+  Future<void> _applyZoomCommand(
+    CameraController controller,
+    double target,
+  ) async {
     try {
-      while (mounted && identical(_controller, controller)) {
-        final target = _requestedZoom.clamp(_minZoom, _maxZoom).toDouble();
-        if ((target - _zoomLevel).abs() < 0.01) break;
-        await controller.setZoomLevel(target);
-        _zoomLevel = target;
-        if ((_requestedZoom - _zoomLevel).abs() < 0.01) break;
-      }
+      await controller.setZoomLevel(target);
     } catch (_) {
-      // Zoom is optional; leave the camera working if a device rejects it.
-    } finally {
-      _zoomUpdateInFlight = false;
-      if (mounted &&
-          identical(_controller, controller) &&
-          (_requestedZoom - _zoomLevel).abs() >= 0.01) {
-        unawaited(_applyZoom());
-      }
+      // CameraX cancels superseded zoom operations; newer targets remain active.
     }
   }
 
@@ -389,6 +403,7 @@ replace_once(
     """                  GestureDetector(
                     onScaleStart: _onZoomStart,
                     onScaleUpdate: _onZoomUpdate,
+                    onScaleEnd: _onZoomEnd,
                     child: ClipRect(child: CameraPreview(controller)),
                   )""",
     "pinch-to-zoom gesture",
